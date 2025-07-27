@@ -17,7 +17,7 @@ ENV GO111MODULE=on \
 WORKDIR /build
 
 ADD go.mod go.sum ./
-RUN go mod download
+RUN go env -w GO111MODULE=on && go env -w GOPROXY=https://repoflow.planten.dev/api/go/cache/go,direct && go mod download
 
 COPY . .
 COPY --from=builder /build/dist ./web/dist
