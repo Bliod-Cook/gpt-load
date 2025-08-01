@@ -67,6 +67,8 @@ const moreOptions = [
   { label: "清空所有无效密钥", key: "clearInvalid", props: { style: { color: "#d03050" } } },
   { type: "divider" },
   { label: "验证所有密钥", key: "validateAll" },
+  { label: "验证有效密钥", key: "validateActive" },
+  { label: "验证无效密钥", key: "validateInvalid" },
 ];
 
 let testingMsg: MessageReactive | null = null;
@@ -92,8 +94,16 @@ watch(
   { immediate: true }
 );
 
-watch([currentPage, pageSize, statusFilter], async () => {
+watch([currentPage, pageSize], async () => {
   await loadKeys();
+});
+
+watch(statusFilter, async () => {
+  if (currentPage.value !== 1) {
+    currentPage.value = 1;
+  } else {
+    await loadKeys();
+  }
 });
 
 // 监听任务完成事件，自动刷新密钥列表
@@ -119,8 +129,11 @@ watch(
 
 // 处理搜索输入的防抖
 function handleSearchInput() {
-  currentPage.value = 1; // 搜索时重置到第一页
-  loadKeys();
+  if (currentPage.value !== 1) {
+    currentPage.value = 1;
+  } else {
+    loadKeys();
+  }
 }
 
 // 处理更多操作菜单
@@ -139,7 +152,13 @@ function handleMoreAction(key: string) {
       restoreAllInvalid();
       break;
     case "validateAll":
-      validateAllKeys();
+      validateKeys("all");
+      break;
+    case "validateActive":
+      validateKeys("active");
+      break;
+    case "validateInvalid":
+      validateKeys("invalid");
       break;
     case "clearInvalid":
       clearAllInvalid();
@@ -384,17 +403,24 @@ async function restoreAllInvalid() {
   });
 }
 
-async function validateAllKeys() {
+async function validateKeys(status: "all" | "active" | "invalid") {
   if (!props.selectedGroup?.id || testingMsg) {
     return;
   }
 
-  testingMsg = window.$message.info("正在验证密钥...", {
+  let statusText = "所有";
+  if (status === "active") {
+    statusText = "有效";
+  } else if (status === "invalid") {
+    statusText = "无效";
+  }
+
+  testingMsg = window.$message.info(`正在验证${statusText}密钥...`, {
     duration: 0,
   });
 
   try {
-    await keysApi.validateGroupKeys(props.selectedGroup.id);
+    await keysApi.validateGroupKeys(props.selectedGroup.id, status === "all" ? undefined : status);
     localStorage.removeItem("last_closed_task");
     appState.taskPollingTrigger++;
   } catch (_error) {
@@ -815,8 +841,8 @@ function resetPage() {
 
 .keys-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
 }
 
 .key-card {
@@ -877,7 +903,8 @@ function resetPage() {
 .key-stats {
   display: flex;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
+  overflow: hidden;
   color: #6c757d;
   flex: 1;
   min-width: 0;
@@ -1025,5 +1052,24 @@ function resetPage() {
 .page-info {
   font-size: 12px;
   color: #6c757d;
+}
+
+@media (max-width: 768px) {
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .toolbar-left,
+  .toolbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .toolbar-right .n-space {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 </style>

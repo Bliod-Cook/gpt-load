@@ -49,7 +49,7 @@ async function pollOnce() {
           let msg = "任务已完成。";
           if (task.task_type === "KEY_VALIDATION") {
             const result = task.result as import("@/types/models").KeyValidationResult;
-            msg = `密钥验证完成，处理了 ${result.total_keys} 个密钥，其中 ${result.valid_keys} 个有效，${result.invalid_keys} 个无效。`;
+            msg = `密钥验证完成，处理了 ${result.total_keys} 个密钥，其中 ${result.valid_keys} 个成功，${result.invalid_keys} 个失败。请注意：验证失败并不一定拉黑该密钥，需要失败次数达到阈值才会拉黑。`;
           } else if (task.task_type === "KEY_IMPORT") {
             const result = task.result as import("@/types/models").KeyImportResult;
             msg = `密钥导入完成，成功添加 ${result.added_count} 个密钥，忽略了 ${result.ignored_count} 个。`;
@@ -170,12 +170,21 @@ function getTaskTitle(): string {
   bottom: 62px;
   right: 10px;
   z-index: 9999;
-  width: 350px;
+  width: 95%;
+  max-width: 350px;
   background: white;
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-lg);
   border: 1px solid rgba(0, 0, 0, 0.08);
   animation: slideIn 0.3s ease-out;
+}
+
+@media (max-width: 768px) {
+  .global-task-progress {
+    bottom: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }
 
 @keyframes slideIn {
