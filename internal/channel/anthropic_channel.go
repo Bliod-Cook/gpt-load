@@ -61,6 +61,17 @@ func (ch *AnthropicChannel) IsStreamRequest(c *gin.Context, bodyBytes []byte) bo
 	return false
 }
 
+func (ch *AnthropicChannel) ExtractModel(c *gin.Context, bodyBytes []byte) string {
+	type modelPayload struct {
+		Model string `json:"model"`
+	}
+	var p modelPayload
+	if err := json.Unmarshal(bodyBytes, &p); err == nil {
+		return p.Model
+	}
+	return ""
+}
+
 // ValidateKey checks if the given API key is valid by making a messages request.
 func (ch *AnthropicChannel) ValidateKey(ctx context.Context, key string) (bool, error) {
 	upstreamURL := ch.getUpstreamURL()
@@ -104,8 +115,8 @@ func (ch *AnthropicChannel) ValidateKey(ctx context.Context, key string) (bool, 
 	}
 	defer resp.Body.Close()
 
-	// A 200 OK status code indicates the key is valid and can make requests.
-	if resp.StatusCode == http.StatusOK {
+	// Any 2xx status code indicates the key is valid.
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return true, nil
 	}
 
