@@ -26,7 +26,7 @@ import {
   useDialog,
   type MessageReactive,
 } from "naive-ui";
-import { ref, watch } from "vue";
+import { h, ref, watch } from "vue";
 import KeyCreateDialog from "./KeyCreateDialog.vue";
 import KeyDeleteDialog from "./KeyDeleteDialog.vue";
 
@@ -49,6 +49,7 @@ const pageSize = ref(12);
 const total = ref(0);
 const totalPages = ref(0);
 const dialog = useDialog();
+const confirmInput = ref("");
 
 // 状态过滤选项
 const statusOptions = [
@@ -65,6 +66,7 @@ const moreOptions = [
   { type: "divider" },
   { label: "恢复所有无效密钥", key: "restoreAll" },
   { label: "清空所有无效密钥", key: "clearInvalid", props: { style: { color: "#d03050" } } },
+  { label: "清空所有密钥", key: "clearAll", props: { style: { color: "red", fontWeight: "bold" } } },
   { type: "divider" },
   { label: "验证所有密钥", key: "validateAll" },
   { label: "验证有效密钥", key: "validateActive" },
@@ -163,6 +165,9 @@ function handleMoreAction(key: string) {
     case "clearInvalid":
       clearAllInvalid();
       break;
+    case "clearAll":
+      clearAll();
+      break;
   }
 }
 
@@ -218,10 +223,10 @@ async function testKey(_key: KeyRow) {
   });
 
   try {
-    const res = await keysApi.testKeys(props.selectedGroup.id, _key.key_value);
-    const curValid = res?.[0] || {};
+    const response = await keysApi.testKeys(props.selectedGroup.id, _key.key_value);
+    const curValid = response.results?.[0] || {};
     if (curValid.is_valid) {
-      window.$message.success("密钥测试成功");
+      window.$message.success(`密钥测试成功 (耗时: ${formatDuration(response.total_duration)})`);
     } else {
       window.$message.error(curValid.error || "密钥测试失败: 无效的API密钥", {
         keepAliveOnHover: true,
@@ -238,6 +243,29 @@ async function testKey(_key: KeyRow) {
     testingMsg?.destroy();
     testingMsg = null;
   }
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 0) {
+    return "0ms";
+  }
+
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  const milliseconds = ms % 1000;
+
+  let result = "";
+  if (minutes > 0) {
+    result += `${minutes}m`;
+  }
+  if (seconds > 0) {
+    result += `${seconds}s`;
+  }
+  if (milliseconds > 0 || result === "") {
+    result += `${milliseconds}ms`;
+  }
+
+  return result;
 }
 
 function toggleKeyVisibility(key: KeyRow) {
@@ -460,6 +488,71 @@ async function clearAllInvalid() {
         d.loading = false;
         isDeling.value = false;
       }
+    },
+  });
+}
+
+async function clearAll() {
+  if (!props.selectedGroup?.id || isDeling.value) {
+    return;
+  }
+
+  dialog.warning({
+    title: "清空所有密钥",
+    content: "此操作将永久删除该分组下的所有密钥，且不可恢复！确定要继续吗？",
+    positiveText: "确定",
+    negativeText: "取消",
+    onPositiveClick: () => {
+      confirmInput.value = ""; // Reset before opening second dialog
+      dialog.create({
+        title: "请输入分组名称以确认",
+        content: () =>
+          h("div", null, [
+            h("p", null, [
+              "这是一个非常危险的操作，将删除此分组下的",
+              h("strong", null, "所有"),
+              "密钥。为防止误操作，请输入分组名称 ",
+              h(
+                "strong",
+                { style: { color: "#d03050" } },
+                props.selectedGroup!.name
+              ),
+              " 以确认。",
+            ]),
+            h(NInput, {
+              value: confirmInput.value,
+              "onUpdate:value": (v) => {
+                confirmInput.value = v;
+              },
+              placeholder: "请输入分组名称",
+            }),
+          ]),
+        positiveText: "确认清空",
+        negativeText: "取消",
+        onPositiveClick: async () => {
+          if (confirmInput.value !== props.selectedGroup!.name) {
+            window.$message.error("分组名称输入不正确");
+            return false; // Prevent dialog from closing
+          }
+
+          if (!props.selectedGroup?.id) {
+            return;
+          }
+
+          isDeling.value = true;
+          try {
+            await keysApi.clearAllKeys(props.selectedGroup.id);
+            window.$message.success("已成功清空所有密钥");
+            await loadKeys();
+            // Trigger sync operation refresh
+            triggerSyncOperationRefresh(props.selectedGroup.name, "CLEAR_ALL");
+          } catch (_error) {
+            console.error("清空失败", _error);
+          } finally {
+            isDeling.value = false;
+          }
+        },
+      });
     },
   });
 }

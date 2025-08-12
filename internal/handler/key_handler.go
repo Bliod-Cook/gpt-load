@@ -8,6 +8,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -247,7 +248,9 @@ func (s *Server) TestMultipleKeys(c *gin.Context) {
 		return
 	}
 
+	start := time.Now()
 	results, err := s.KeyService.TestMultipleKeys(group, req.KeysText)
+	duration := time.Since(start).Milliseconds()
 	if err != nil {
 		if strings.Contains(err.Error(), "batch size exceeds the limit") {
 			response.Error(c, app_errors.NewAPIError(app_errors.ErrValidation, err.Error()))
@@ -259,7 +262,10 @@ func (s *Server) TestMultipleKeys(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, results)
+	response.Success(c, gin.H{
+		"results":        results,
+		"total_duration": duration,
+	})
 }
 
 // ValidateGroupKeys initiates a manual validation task for all keys in a group.
@@ -336,6 +342,27 @@ func (s *Server) ClearAllInvalidKeys(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{"message": fmt.Sprintf("%d invalid keys cleared.", rowsAffected)})
+}
+
+// ClearAllKeys deletes all keys from a group.
+func (s *Server) ClearAllKeys(c *gin.Context) {
+	var req GroupIDRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, app_errors.NewAPIError(app_errors.ErrInvalidJSON, err.Error()))
+		return
+	}
+
+	if _, ok := s.findGroupByID(c, req.GroupID); !ok {
+		return
+	}
+
+	rowsAffected, err := s.KeyService.ClearAllKeys(req.GroupID)
+	if err != nil {
+		response.Error(c, app_errors.ParseDBError(err))
+		return
+	}
+
+	response.Success(c, gin.H{"message": fmt.Sprintf("%d keys cleared.", rowsAffected)})
 }
 
 // ExportKeys handles exporting keys to a text file.

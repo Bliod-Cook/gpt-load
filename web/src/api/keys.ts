@@ -91,13 +91,14 @@ export const keysApi = {
   async testKeys(
     group_id: number,
     keys_text: string
-  ): Promise<
-    {
+  ): Promise<{
+    results: {
       key_value: string;
       is_valid: boolean;
       error: string;
-    }[]
-  > {
+    }[];
+    total_duration: number;
+  }> {
     const res = await http.post(
       "/keys/test-multiple",
       {
@@ -140,6 +141,17 @@ export const keysApi = {
   clearAllInvalidKeys(group_id: number): Promise<{ data: { message: string } }> {
     return http.post(
       "/keys/clear-all-invalid",
+      { group_id },
+      {
+        hideMessage: true,
+      }
+    );
+  },
+
+  // 清空所有密钥
+  clearAllKeys(group_id: number): Promise<{ data: { message: string } }> {
+    return http.post(
+      "/keys/clear-all",
       { group_id },
       {
         hideMessage: true,
