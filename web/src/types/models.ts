@@ -16,6 +16,8 @@ export interface APIKey {
   status: KeyStatus;
   request_count: number;
   failure_count: number;
+  last_failure_error?: string;
+  last_failure_at?: string;
   last_used_at?: string;
   created_at: string;
   updated_at: string;
