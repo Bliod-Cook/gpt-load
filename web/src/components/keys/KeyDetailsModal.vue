@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import type { APIKey } from "@/types/models";
-import { maskKey } from "@/utils/display";
-import { formatRelativeTime, formatDate } from "@/utils/time";
-import { CopyOutline, Close } from "@vicons/ionicons5";
-import {
-  NModal,
-  NButton,
-  NSpace,
-  NIcon,
-  NTag,
-  NText,
-  NDivider,
-  NCode,
-  NCard,
-  NDescriptions,
-  NDescriptionsItem
-} from "naive-ui";
 import { copy } from "@/utils/clipboard";
+import { maskKey } from "@/utils/display";
+import { formatDate, formatRelativeTime } from "@/utils/time";
+import { Close, CopyOutline } from "@vicons/ionicons5";
+import {
+  NButton,
+  NCard,
+  NCode,
+  NDescriptions,
+  NDescriptionsItem,
+  NDivider,
+  NIcon,
+  NModal,
+  NSpace,
+  NTag,
+  NText
+} from "naive-ui";
 
 interface Props {
   show: boolean;
@@ -101,7 +101,7 @@ async function copyErrorMessage() {
               ({{ formatRelativeTime(keyData.last_failure_at || "") }})
             </n-text>
           </n-descriptions-item>
-          <n-descriptions-item v-if="keyData.last_failure_error" label="错误信息" :span="2">
+          <n-descriptions-item v-if="keyData.last_failure_error"  label="错误信息" :span="2">
             <div class="error-section">
               <n-space align="center" justify="space-between" style="margin-bottom: 8px">
                 <span>错误详情</span>
