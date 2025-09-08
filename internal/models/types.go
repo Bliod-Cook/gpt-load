@@ -79,7 +79,7 @@ type APIKey struct {
 	ID               uint       `gorm:"primaryKey;autoIncrement" json:"id"`
 	KeyValue         string     `gorm:"type:text;not null" json:"key_value"`
 	KeyHash          string     `gorm:"type:varchar(128);index" json:"key_hash"`
-	GroupID          uint       `gorm:"not null;uniqueIndex:idx_group_key" json:"group_id"`
+	GroupID          uint       `gorm:"not null;uniqueIndex:idx_group_key`
 	Status           string     `gorm:"type:varchar(50);not null;default:'active'" json:"status"`
 	RequestCount     int64      `gorm:"not null;default:0" json:"request_count"`
 	FailureCount     int64      `gorm:"not null;default:0" json:"failure_count"`
