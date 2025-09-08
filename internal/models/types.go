@@ -76,16 +76,18 @@ type Group struct {
 
 // APIKey 对应 api_keys 表
 type APIKey struct {
-	ID           uint       `gorm:"primaryKey;autoIncrement" json:"id"`
-	KeyValue     string     `gorm:"type:text;not null" json:"key_value"`
-	KeyHash      string     `gorm:"type:varchar(128);index" json:"key_hash"`
-	GroupID      uint       `gorm:"not null;index" json:"group_id"`
-	Status       string     `gorm:"type:varchar(50);not null;default:'active'" json:"status"`
-	RequestCount int64      `gorm:"not null;default:0" json:"request_count"`
-	FailureCount int64      `gorm:"not null;default:0" json:"failure_count"`
-	LastUsedAt   *time.Time `json:"last_used_at"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	ID               uint       `gorm:"primaryKey;autoIncrement" json:"id"`
+	KeyValue         string     `gorm:"type:text;not null" json:"key_value"`
+	KeyHash          string     `gorm:"type:varchar(128);index" json:"key_hash"`
+	GroupID          uint       `gorm:"not null;uniqueIndex:idx_group_key" json:"group_id"`
+	Status           string     `gorm:"type:varchar(50);not null;default:'active'" json:"status"`
+	RequestCount     int64      `gorm:"not null;default:0" json:"request_count"`
+	FailureCount     int64      `gorm:"not null;default:0" json:"failure_count"`
+	LastFailureError string     `gorm:"type:text" json:"last_failure_error"`
+	LastFailureAt    *time.Time `json:"last_failure_at"`
+	LastUsedAt       *time.Time `json:"last_used_at"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
 // RequestType 请求类型常量

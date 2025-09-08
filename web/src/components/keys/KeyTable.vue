@@ -4,6 +4,7 @@ import type { APIKey, Group, KeyStatus } from "@/types/models";
 import { appState, triggerSyncOperationRefresh } from "@/utils/app-state";
 import { copy } from "@/utils/clipboard";
 import { getGroupDisplayName, maskKey } from "@/utils/display";
+import { formatLastUsedTime } from "@/utils/time";
 import {
   AddCircleOutline,
   AlertCircleOutline,
@@ -29,6 +30,7 @@ import {
 import { h, ref, watch } from "vue";
 import KeyCreateDialog from "./KeyCreateDialog.vue";
 import KeyDeleteDialog from "./KeyDeleteDialog.vue";
+import KeyDetailsModal from "./KeyDetailsModal.vue";
 
 interface KeyRow extends APIKey {
   is_visible: boolean;
@@ -83,6 +85,8 @@ const isRestoring = ref(false);
 
 const createDialogShow = ref(false);
 const deleteDialogShow = ref(false);
+const detailsModalShow = ref(false);
+const selectedKeyForDetails = ref<KeyRow | null>(null);
 
 watch(
   () => props.selectedGroup,
@@ -277,6 +281,11 @@ function toggleKeyVisibility(key: KeyRow) {
   key.is_visible = !key.is_visible;
 }
 
+function showKeyDetails(key: KeyRow) {
+  selectedKeyForDetails.value = key;
+  detailsModalShow.value = true;
+}
+
 async function restoreKey(key: KeyRow) {
   if (!props.selectedGroup?.id || !key.key_value || isRestoring.value) {
     return;
@@ -344,29 +353,7 @@ async function deleteKey(key: KeyRow) {
 }
 
 function formatRelativeTime(date: string) {
-  if (!date) {
-    return "从未";
-  }
-  const now = new Date();
-  const target = new Date(date);
-  const diffSeconds = Math.floor((now.getTime() - target.getTime()) / 1000);
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffDays > 0) {
-    return `${diffDays}天前`;
-  }
-  if (diffHours > 0) {
-    return `${diffHours}小时前`;
-  }
-  if (diffMinutes > 0) {
-    return `${diffMinutes}分钟前`;
-  }
-  if (diffSeconds > 0) {
-    return `${diffSeconds}秒前`;
-  }
-  return "刚刚";
+  return formatLastUsedTime(date);
 }
 
 function getStatusClass(status: KeyStatus): string {
@@ -711,6 +698,15 @@ function resetPage() {
                   测试
                 </n-button>
                 <n-button
+                  tertiary
+                  type="info"
+                  size="tiny"
+                  @click="showKeyDetails(key)"
+                  title="查看详情"
+                >
+                  详情
+                </n-button>
+                <n-button
                   v-if="key.status !== 'active'"
                   tertiary
                   size="tiny"
@@ -783,6 +779,11 @@ function resetPage() {
       :group-id="selectedGroup.id"
       :group-name="getGroupDisplayName(selectedGroup!)"
       @success="handleBatchDeleteSuccess"
+    />
+
+    <key-details-modal
+      v-model:show="detailsModalShow"
+      :key-data="selectedKeyForDetails"
     />
   </div>
 </template>
