@@ -4,6 +4,7 @@ import type { APIKey, Group, KeyStatus } from "@/types/models";
 import { appState, triggerSyncOperationRefresh } from "@/utils/app-state";
 import { copy } from "@/utils/clipboard";
 import { getGroupDisplayName, maskKey } from "@/utils/display";
+import { formatLastUsedTime } from "@/utils/time";
 import {
   AddCircleOutline,
   AlertCircleOutline,
@@ -30,6 +31,7 @@ import { h, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import KeyCreateDialog from "./KeyCreateDialog.vue";
 import KeyDeleteDialog from "./KeyDeleteDialog.vue";
+import KeyDetailsModal from "./KeyDetailsModal.vue";
 
 const { t } = useI18n();
 
@@ -90,6 +92,8 @@ const isRestoring = ref(false);
 
 const createDialogShow = ref(false);
 const deleteDialogShow = ref(false);
+const detailsModalShow = ref(false);
+const selectedKeyForDetails = ref<KeyRow | null>(null);
 
 watch(
   () => props.selectedGroup,
@@ -286,6 +290,11 @@ function toggleKeyVisibility(key: KeyRow) {
   key.is_visible = !key.is_visible;
 }
 
+function showKeyDetails(key: KeyRow) {
+  selectedKeyForDetails.value = key;
+  detailsModalShow.value = true;
+}
+
 async function restoreKey(key: KeyRow) {
   if (!props.selectedGroup?.id || !key.key_value || isRestoring.value) {
     return;
@@ -353,29 +362,7 @@ async function deleteKey(key: KeyRow) {
 }
 
 function formatRelativeTime(date: string) {
-  if (!date) {
-    return t("keys.never");
-  }
-  const now = new Date();
-  const target = new Date(date);
-  const diffSeconds = Math.floor((now.getTime() - target.getTime()) / 1000);
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffDays > 0) {
-    return t("keys.daysAgo", { days: diffDays });
-  }
-  if (diffHours > 0) {
-    return t("keys.hoursAgo", { hours: diffHours });
-  }
-  if (diffMinutes > 0) {
-    return t("keys.minutesAgo", { minutes: diffMinutes });
-  }
-  if (diffSeconds > 0) {
-    return t("keys.secondsAgo", { seconds: diffSeconds });
-  }
-  return t("keys.justNow");
+  return formatLastUsedTime(date);
 }
 
 function getStatusClass(status: KeyStatus): string {
@@ -725,6 +712,15 @@ function resetPage() {
                   {{ t("keys.testShort") }}
                 </n-button>
                 <n-button
+                  tertiary
+                  type="info"
+                  size="tiny"
+                  @click="showKeyDetails(key)"
+                  title="查看详情"
+                >
+                  详情
+                </n-button>
+                <n-button
                   v-if="key.status !== 'active'"
                   tertiary
                   size="tiny"
@@ -799,6 +795,11 @@ function resetPage() {
       :group-id="selectedGroup.id"
       :group-name="getGroupDisplayName(selectedGroup!)"
       @success="handleBatchDeleteSuccess"
+    />
+
+    <key-details-modal
+      v-model:show="detailsModalShow"
+      :key-data="selectedKeyForDetails"
     />
   </div>
 </template>
