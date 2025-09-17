@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { computed, ref } from "vue";
 import type { APIKey } from "@/types/models";
 import { copy } from "@/utils/clipboard";
 import { maskKey } from "@/utils/display";
 import { formatDate, formatRelativeTime } from "@/utils/time";
-import { Close, CopyOutline } from "@vicons/ionicons5";
+import { Close, CopyOutline, EyeOutline, EyeOffOutline } from "@vicons/ionicons5";
 import {
   NButton,
   NCard,
@@ -13,6 +14,7 @@ import {
   NDivider,
   NIcon,
   NModal,
+  NTooltip,
   NSpace,
   NTag,
   NText
@@ -35,6 +37,42 @@ function handleClose() {
   emit("update:show", false);
 }
 
+// 是否显示完整密钥
+const showKeyValue = ref(false);
+
+// 复制通用方法
+async function copyField(text: string, okMsg?: string) {
+  const success = await copy(text);
+  if (success) {
+    window.$message.success(okMsg || "已复制到剪贴板");
+  } else {
+    window.$message.error("复制失败");
+  }
+}
+
+async function copyKeyId() {
+  if (!props.keyData) return;
+  await copyField(String(props.keyData.id), "密钥 ID 已复制");
+}
+
+async function copyKeyValue() {
+  if (!props.keyData) return;
+  await copyField(props.keyData.key_value, "密钥值已复制");
+}
+
+function toggleShowKey() {
+  showKeyValue.value = !showKeyValue.value;
+}
+
+// 成功率（%），无请求时返回 null
+const successRate = computed(() => {
+  const total = props.keyData?.request_count ?? 0;
+  if (!total) return null;
+  const failures = props.keyData?.failure_count ?? 0;
+  const success = Math.max(total - failures, 0);
+  return Math.round((success / total) * 100);
+});
+
 async function copyErrorMessage() {
   if (!props.keyData?.last_failure_error) {
     return;
@@ -51,7 +89,7 @@ async function copyErrorMessage() {
 <template>
   <n-modal :show="show" @update:show="handleClose" class="key-details-modal">
     <n-card
-      style="width: 600px"
+      style="width: 680px; max-width: 92vw"
       title="密钥详情"
       :bordered="false"
       size="huge"
@@ -69,9 +107,51 @@ async function copyErrorMessage() {
       <div v-if="keyData" class="key-details">
         <!-- 基本信息 -->
         <n-descriptions title="基本信息" :column="2" label-placement="left" bordered>
-          <n-descriptions-item label="密钥ID">{{ keyData.id }}</n-descriptions-item>
+          <n-descriptions-item label="密钥ID">
+            <n-space align="center" size="small">
+              <n-text code>{{ keyData.id }}</n-text>
+              <n-tooltip trigger="hover" :show-arrow="false">
+                <template #trigger>
+                  <n-button text size="tiny" @click="copyKeyId" title="复制密钥ID">
+                    <template #icon>
+                      <n-icon :component="CopyOutline" />
+                    </template>
+                  </n-button>
+                </template>
+                复制
+              </n-tooltip>
+            </n-space>
+          </n-descriptions-item>
           <n-descriptions-item label="密钥值" :span="2">
-            <n-text code>{{ maskKey(keyData.key_value) }}</n-text>
+            <n-space align="center" justify="space-between" style="width: 100%">
+              <n-text code>
+                {{ showKeyValue ? keyData.key_value : maskKey(keyData.key_value) }}
+              </n-text>
+              <div class="inline-actions">
+                <n-tooltip trigger="hover" :show-arrow="false">
+                  <template #trigger>
+                    <n-button text size="tiny" @click="toggleShowKey" :title="showKeyValue ? '隐藏' : '显示'">
+                      <template #icon>
+                        <n-icon :component="showKeyValue ? EyeOffOutline : EyeOutline" />
+                      </template>
+                      {{ showKeyValue ? '隐藏' : '显示' }}
+                    </n-button>
+                  </template>
+                  {{ showKeyValue ? '隐藏密钥' : '显示密钥' }}
+                </n-tooltip>
+                <n-tooltip trigger="hover" :show-arrow="false">
+                  <template #trigger>
+                    <n-button text size="tiny" @click="copyKeyValue" title="复制密钥值">
+                      <template #icon>
+                        <n-icon :component="CopyOutline" />
+                      </template>
+                      复制
+                    </n-button>
+                  </template>
+                  复制
+                </n-tooltip>
+              </div>
+            </n-space>
           </n-descriptions-item>
           <n-descriptions-item label="状态">
             <n-tag
@@ -88,7 +168,15 @@ async function copyErrorMessage() {
           </n-descriptions-item>
           <n-descriptions-item label="请求次数">{{ keyData.request_count }}</n-descriptions-item>
           <n-descriptions-item label="失败次数">{{ keyData.failure_count }}</n-descriptions-item>
-          <n-descriptions-item label="最后使用">{{ formatRelativeTime(keyData.last_used_at || "") }}</n-descriptions-item>
+          <n-descriptions-item label="成功率">
+            {{ successRate !== null ? successRate + '%' : '—' }}
+          </n-descriptions-item>
+          <n-descriptions-item label="最后使用">
+            {{ formatDate(keyData.last_used_at || "") }}
+            <n-text depth="3" style="margin-left: 8px">
+              ({{ formatRelativeTime(keyData.last_used_at || "") }})
+            </n-text>
+          </n-descriptions-item>
         </n-descriptions>
 
         <n-divider />
@@ -112,7 +200,12 @@ async function copyErrorMessage() {
                   复制
                 </n-button>
               </n-space>
-              <n-code language="text" :code="keyData.last_failure_error" style="max-height: 200px; overflow-y: auto;" />
+              <n-code
+                language="text"
+                :code="keyData.last_failure_error"
+                word-wrap
+                style="max-height: 40vh; max-width: 100%; overflow: auto;"
+              />
             </div>
           </n-descriptions-item>
           <n-descriptions-item v-if="!keyData.last_failure_error && !keyData.last_failure_at" label="状态" :span="2">
@@ -124,8 +217,18 @@ async function copyErrorMessage() {
 
         <!-- 时间信息 -->
         <n-descriptions title="时间信息" :column="2" label-placement="left" bordered>
-          <n-descriptions-item label="创建时间">{{ formatDate(keyData.created_at) }}</n-descriptions-item>
-          <n-descriptions-item label="更新时间">{{ formatDate(keyData.updated_at) }}</n-descriptions-item>
+          <n-descriptions-item label="创建时间">
+            {{ formatDate(keyData.created_at) }}
+            <n-text depth="3" style="margin-left: 8px">
+              ({{ formatRelativeTime(keyData.created_at || "") }})
+            </n-text>
+          </n-descriptions-item>
+          <n-descriptions-item label="更新时间">
+            {{ formatDate(keyData.updated_at) }}
+            <n-text depth="3" style="margin-left: 8px">
+              ({{ formatRelativeTime(keyData.updated_at || "") }})
+            </n-text>
+          </n-descriptions-item>
         </n-descriptions>
       </div>
 
@@ -150,6 +253,21 @@ async function copyErrorMessage() {
 
 .error-section {
   width: 100%;
+}
+
+.inline-actions {
+  display: flex;
+  gap: 4px;
+}
+
+/* 确保错误信息在任意尺寸下都不会溢出屏幕 */
+.error-section :deep(.n-code) {
+  max-width: 100%;
+  overflow: auto;
+}
+.error-section :deep(pre) {
+  white-space: pre-wrap;         /* 允许换行 */
+  overflow-wrap: anywhere;       /* 极长单词/连续字符也可换行 */
 }
 
 :deep(.n-card-header) {
