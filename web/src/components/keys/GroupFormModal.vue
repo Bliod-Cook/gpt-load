@@ -63,7 +63,7 @@ interface GroupFormData {
   display_name: string;
   description: string;
   upstreams: UpstreamInfo[];
-  channel_type: "anthropic" | "gemini" | "openai";
+  channel_type: "anthropic" | "gemini" | "openai" | "ws";
   sort: number;
   test_model: string;
   validation_endpoint: string;
