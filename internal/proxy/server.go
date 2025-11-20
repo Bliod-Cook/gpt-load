@@ -348,6 +348,13 @@ func (ps *ProxyServer) handleWebSocketProxy(c *gin.Context, channelHandler chann
 	headers.Del("Authorization")
 	headers.Del("X-Api-Key")
 	headers.Del("X-Goog-Api-Key")
+	// Let gorilla/websocket manage WS control headers itself
+	headers.Del("Connection")
+	headers.Del("Upgrade")
+	headers.Del("Sec-Websocket-Key")
+	headers.Del("Sec-Websocket-Version")
+	headers.Del("Sec-Websocket-Extensions")
+	headers.Del("Sec-Websocket-Protocol")
 
 	// Reuse channel-specific header modification logic
 	dummyReq, _ := http.NewRequestWithContext(ctx, http.MethodGet, wsURL, nil)
