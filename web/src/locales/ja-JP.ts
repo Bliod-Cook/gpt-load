@@ -269,9 +269,6 @@ export default {
     proxyKeysTooltip:
       "このグループのプロキシエンドポイントにアクセスするためのグループ固有のプロキシキー。複数のキーはカンマで区切ってください。",
     proxyKeysCopied: "プロキシキーがクリップボードにコピーされました",
-    enableNoAuth: "認証なしモード",
-    enableNoAuthTooltip:
-      "有効にすると、認証キーなしでこのグループのエンドポイントにアクセスできます。注意して使用してください！",
     multiKeysPlaceholder: "複数のキーはカンマで区切ってください",
     descriptionTooltip:
       "チームメンバーがその目的と特徴を理解できるようにするグループの詳細説明。複数行テキストをサポート",

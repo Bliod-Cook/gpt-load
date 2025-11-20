@@ -265,8 +265,6 @@ export default {
     optionalCustomValidationPath: "可选，自定义用于验证key的API路径",
     proxyKeysTooltip: "分组专用代理密钥，用于访问此分组的代理端点。多个密钥请用逗号分隔。",
     proxyKeysCopied: "代理密钥已复制到剪贴板",
-    enableNoAuth: "免鉴权模式",
-    enableNoAuthTooltip: "开启后，无需任何密钥即可直接调用此分组的接口。请谨慎使用！",
     multiKeysPlaceholder: "多个密钥请用英文逗号 , 分隔",
     descriptionTooltip: "分组的详细说明，帮助团队成员了解该分组的用途和特点。支持多行文本",
     upstreamTooltip: "API服务器的完整URL地址。多个上游可以实现负载均衡和故障转移，提高服务可用性",

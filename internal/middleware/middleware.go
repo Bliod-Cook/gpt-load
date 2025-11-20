@@ -142,23 +142,17 @@ func Auth(authConfig types.AuthConfig) gin.HandlerFunc {
 // ProxyAuth
 func ProxyAuth(gm *services.GroupManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		group, err := gm.GetGroupByName(c.Param("group_name"))
-		if err != nil {
-			response.Error(c, app_errors.NewAPIError(app_errors.ErrInternalServer, "Failed to retrieve proxy group"))
-			c.Abort()
-			return
-		}
-
-		// Check if No Auth is enabled for this group
-		if group.EnableNoAuth {
-			c.Next()
-			return
-		}
-
 		// Check key
 		key := extractAuthKey(c)
 		if key == "" {
 			response.Error(c, app_errors.ErrUnauthorized)
+			c.Abort()
+			return
+		}
+
+		group, err := gm.GetGroupByName(c.Param("group_name"))
+		if err != nil {
+			response.Error(c, app_errors.NewAPIError(app_errors.ErrInternalServer, "Failed to retrieve proxy group"))
 			c.Abort()
 			return
 		}
