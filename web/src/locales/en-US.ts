@@ -269,6 +269,9 @@ export default {
     proxyKeysTooltip:
       "Group-specific proxy keys for accessing this group's proxy endpoint. Separate multiple keys with commas.",
     proxyKeysCopied: "Proxy keys copied to clipboard",
+    enableNoAuth: "No Auth Mode",
+    enableNoAuthTooltip:
+      "If enabled, this group's endpoint can be accessed without any authentication key. Use with caution!",
     multiKeysPlaceholder: "Separate multiple keys with commas",
     descriptionTooltip:
       "Detailed description of the group to help team members understand its purpose and features. Supports multi-line text",

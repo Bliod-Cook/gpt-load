@@ -72,6 +72,7 @@ interface GroupFormData {
   configItems: ConfigItem[];
   header_rules: HeaderRuleItem[];
   proxy_keys: string;
+  enable_no_auth: boolean;
 }
 
 // 表单数据
@@ -94,6 +95,7 @@ const formData = reactive<GroupFormData>({
   configItems: [] as ConfigItem[],
   header_rules: [] as HeaderRuleItem[],
   proxy_keys: "",
+  enable_no_auth: false,
 });
 
 const channelTypeOptions = ref<{ label: string; value: string }[]>([]);
@@ -286,6 +288,7 @@ function resetForm() {
     configItems: [],
     header_rules: [],
     proxy_keys: "",
+    enable_no_auth: false,
   });
 
   // 重置用户修改状态追踪
@@ -329,6 +332,7 @@ function loadGroupData() {
       action: (rule.action as "set" | "remove") || "set",
     })),
     proxy_keys: props.group.proxy_keys || "",
+    enable_no_auth: props.group.enable_no_auth || false,
   });
 }
 
@@ -492,6 +496,7 @@ async function handleSubmit() {
           action: rule.action,
         })),
       proxy_keys: formData.proxy_keys,
+      enable_no_auth: formData.enable_no_auth,
     };
 
     let res: Group;
@@ -692,11 +697,25 @@ async function handleSubmit() {
                 </n-tooltip>
               </div>
             </template>
-            <proxy-keys-input
-              v-model="formData.proxy_keys"
-              :placeholder="t('keys.multiKeysPlaceholder')"
-              size="medium"
-            />
+            <div style="display: flex; flex-direction: column; width: 100%; gap: 12px">
+              <proxy-keys-input
+                v-model="formData.proxy_keys"
+                :placeholder="t('keys.multiKeysPlaceholder')"
+                size="medium"
+              />
+              <div style="display: flex; align-items: center; gap: 8px">
+                <n-switch v-model:value="formData.enable_no_auth" size="small" />
+                <div class="form-label-with-tooltip">
+                  {{ t("keys.enableNoAuth") }}
+                  <n-tooltip trigger="hover" placement="top">
+                    <template #trigger>
+                      <n-icon :component="HelpCircleOutline" class="help-icon" />
+                    </template>
+                    {{ t("keys.enableNoAuthTooltip") }}
+                  </n-tooltip>
+                </div>
+              </div>
+            </div>
           </n-form-item>
 
           <!-- Description takes full row -->

@@ -52,6 +52,7 @@ export interface Group {
   endpoint?: string;
   param_overrides: Record<string, unknown>;
   header_rules?: HeaderRule[];
+  enable_no_auth?: boolean;
   proxy_keys: string;
   created_at?: string;
   updated_at?: string;
