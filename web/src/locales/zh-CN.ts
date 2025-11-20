@@ -123,6 +123,9 @@ export default {
     groupDescription: "分组描述",
     groupEndpoint: "分组端点",
     proxyKeys: "代理密钥",
+    allowAnonymous: "允许匿名访问",
+    allowAnonymousTooltip:
+      "开启后，可以在不提供代理密钥的情况下直接访问该分组的代理接口，请谨慎使用。",
     createKey: "创建密钥",
     editKey: "编辑密钥",
     deleteKey: "删除密钥",

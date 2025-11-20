@@ -178,6 +178,7 @@ type GroupCreateRequest struct {
 	Config             map[string]any      `json:"config"`
 	HeaderRules        []models.HeaderRule `json:"header_rules"`
 	ProxyKeys          string              `json:"proxy_keys"`
+	AllowAnonymous     bool                `json:"allow_anonymous"`
 }
 
 // CreateGroup handles the creation of a new group.
@@ -281,6 +282,7 @@ func (s *Server) CreateGroup(c *gin.Context) {
 		Config:             cleanedConfig,
 		HeaderRules:        headerRulesJSON,
 		ProxyKeys:          strings.TrimSpace(req.ProxyKeys),
+		AllowAnonymous:     req.AllowAnonymous,
 	}
 
 	if err := s.DB.Create(&group).Error; err != nil {
@@ -325,6 +327,7 @@ type GroupUpdateRequest struct {
 	Config             map[string]any      `json:"config"`
 	HeaderRules        []models.HeaderRule `json:"header_rules"`
 	ProxyKeys          *string             `json:"proxy_keys,omitempty"`
+	AllowAnonymous     *bool               `json:"allow_anonymous,omitempty"`
 }
 
 // UpdateGroup handles updating an existing group.
@@ -427,6 +430,10 @@ func (s *Server) UpdateGroup(c *gin.Context) {
 		group.ProxyKeys = strings.TrimSpace(*req.ProxyKeys)
 	}
 
+	if req.AllowAnonymous != nil {
+		group.AllowAnonymous = *req.AllowAnonymous
+	}
+
 	// Handle header rules update
 	if req.HeaderRules != nil {
 		var headerRulesJSON datatypes.JSON
@@ -502,6 +509,7 @@ type GroupResponse struct {
 	Config             datatypes.JSONMap   `json:"config"`
 	HeaderRules        []models.HeaderRule `json:"header_rules"`
 	ProxyKeys          string              `json:"proxy_keys"`
+	AllowAnonymous     bool                `json:"allow_anonymous"`
 	LastValidatedAt    *time.Time          `json:"last_validated_at"`
 	CreatedAt          time.Time           `json:"created_at"`
 	UpdatedAt          time.Time           `json:"updated_at"`
@@ -543,6 +551,7 @@ func (s *Server) newGroupResponse(group *models.Group) *GroupResponse {
 		Config:             group.Config,
 		HeaderRules:        headerRules,
 		ProxyKeys:          group.ProxyKeys,
+		AllowAnonymous:     group.AllowAnonymous,
 		LastValidatedAt:    group.LastValidatedAt,
 		CreatedAt:          group.CreatedAt,
 		UpdatedAt:          group.UpdatedAt,

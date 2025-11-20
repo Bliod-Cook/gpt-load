@@ -123,6 +123,9 @@ export default {
     groupDescription: "グループ説明",
     groupEndpoint: "グループエンドポイント",
     proxyKeys: "プロキシキー",
+    allowAnonymous: "匿名アクセスを許可",
+    allowAnonymousTooltip:
+      "有効にすると、このグループのプロキシエンドポイントにプロキシキーなしでアクセスできます。慎重に使用してください。",
     createKey: "キー作成",
     editKey: "キー編集",
     deleteKey: "キー削除",

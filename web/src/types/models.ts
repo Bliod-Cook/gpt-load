@@ -53,6 +53,7 @@ export interface Group {
   param_overrides: Record<string, unknown>;
   header_rules?: HeaderRule[];
   proxy_keys: string;
+  allow_anonymous?: boolean;
   created_at?: string;
   updated_at?: string;
 }

@@ -64,6 +64,7 @@ type Group struct {
 	ParamOverrides     datatypes.JSONMap    `gorm:"type:json" json:"param_overrides"`
 	Config             datatypes.JSONMap    `gorm:"type:json" json:"config"`
 	HeaderRules        datatypes.JSON       `gorm:"type:json" json:"header_rules"`
+	AllowAnonymous     bool                 `gorm:"default:false" json:"allow_anonymous"`
 	APIKeys            []APIKey             `gorm:"foreignKey:GroupID" json:"api_keys"`
 	LastValidatedAt    *time.Time           `json:"last_validated_at"`
 	CreatedAt          time.Time            `json:"created_at"`
