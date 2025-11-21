@@ -82,6 +82,14 @@ export const keysApi = {
     return res.data;
   },
 
+  // 从指定分组获取一个随机密钥（遵循当前随机算法）
+  async getRandomKey(groupId: number): Promise<APIKey> {
+    const res = await http.get("/keys/random", {
+      params: { group_id: groupId },
+    });
+    return res.data;
+  },
+
   // 批量添加密钥-已弃用
   async addMultipleKeys(
     group_id: number,
