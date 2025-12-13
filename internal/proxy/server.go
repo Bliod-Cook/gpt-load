@@ -173,6 +173,9 @@ func (ps *ProxyServer) executeRequestWithRetry(
 		utils.ApplyHeaderRules(req, group.HeaderRuleList, headerCtx)
 	}
 
+	// Avoid leaking original client IP/proxy chain headers to upstream.
+	utils.StripForwardedIPHeaders(req.Header)
+
 	var client *http.Client
 	if isStream {
 		client = channelHandler.GetStreamClient()

@@ -109,6 +109,9 @@ func (ch *OpenAIChannel) ValidateKey(ctx context.Context, apiKey *models.APIKey,
 		utils.ApplyHeaderRules(req, group.HeaderRuleList, headerCtx)
 	}
 
+	// Avoid leaking original client IP/proxy chain headers to upstream.
+	utils.StripForwardedIPHeaders(req.Header)
+
 	resp, err := ch.HTTPClient.Do(req)
 	if err != nil {
 		return false, fmt.Errorf("failed to send validation request: %w", err)
