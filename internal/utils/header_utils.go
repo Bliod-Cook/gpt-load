@@ -10,6 +10,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var clientIPHeaderKeys = []string{
+	"Forwarded",
+	"X-Forwarded-For",
+	"X-Forwarded",
+	"X-Original-Forwarded-For",
+	"X-Real-IP",
+	"X-Client-IP",
+	"X-Cluster-Client-IP",
+	"X-Originating-IP",
+	"X-Remote-IP",
+	"X-Remote-Addr",
+	"True-Client-IP",
+	"CF-Connecting-IP",
+}
+
 // HeaderVariableContext holds context data for variable resolution
 type HeaderVariableContext struct {
 	ClientIP string
@@ -87,5 +102,16 @@ func NewHeaderVariableContext(group *models.Group, apiKey *models.APIKey) *Heade
 		ClientIP: "127.0.0.1",
 		Group:    group,
 		APIKey:   apiKey,
+	}
+}
+
+// RemoveClientIPHeaders deletes headers that may leak the original client IP to upstream.
+func RemoveClientIPHeaders(headers http.Header) {
+	if headers == nil {
+		return
+	}
+
+	for _, key := range clientIPHeaderKeys {
+		headers.Del(key)
 	}
 }
