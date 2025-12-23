@@ -149,7 +149,7 @@ func (ps *ProxyServer) executeRequestWithRetry(
 	req.Header.Del("Authorization")
 	req.Header.Del("X-Api-Key")
 	req.Header.Del("X-Goog-Api-Key")
-	utils.RemoveClientIPHeaders(req.Header)
+	utils.RemoveUpstreamPrivacyHeaders(req.Header)
 
 	channelHandler.ModifyRequest(req, apiKey, group)
 
@@ -158,12 +158,11 @@ func (ps *ProxyServer) executeRequestWithRetry(
 		headerCtx := utils.NewHeaderVariableContextFromGin(c, group, apiKey)
 		utils.ApplyHeaderRules(req, group.HeaderRuleList, headerCtx)
 	}
-	utils.RemoveClientIPHeaders(req.Header)
+	utils.RemoveUpstreamPrivacyHeaders(req.Header)
 
 	var client *http.Client
 	if isStream {
 		client = channelHandler.GetStreamClient()
-		req.Header.Set("X-Accel-Buffering", "no")
 	} else {
 		client = channelHandler.GetHTTPClient()
 	}
@@ -356,7 +355,7 @@ func (ps *ProxyServer) handleWebSocketProxy(c *gin.Context, channelHandler chann
 	headers.Del("Sec-Websocket-Version")
 	headers.Del("Sec-Websocket-Extensions")
 	headers.Del("Sec-Websocket-Protocol")
-	utils.RemoveClientIPHeaders(headers)
+	utils.RemoveUpstreamPrivacyHeaders(headers)
 
 	// Reuse channel-specific header modification logic
 	dummyReq, _ := http.NewRequestWithContext(ctx, http.MethodGet, wsURL, nil)
@@ -367,7 +366,7 @@ func (ps *ProxyServer) handleWebSocketProxy(c *gin.Context, channelHandler chann
 		headerCtx := utils.NewHeaderVariableContextFromGin(c, group, apiKey)
 		utils.ApplyHeaderRules(dummyReq, group.HeaderRuleList, headerCtx)
 	}
-	utils.RemoveClientIPHeaders(dummyReq.Header)
+	utils.RemoveUpstreamPrivacyHeaders(dummyReq.Header)
 
 	dialer := websocket.Dialer{
 		HandshakeTimeout: time.Duration(cfg.RequestTimeout) * time.Second,
