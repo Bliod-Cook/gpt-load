@@ -227,7 +227,6 @@ func (s *RequestLogService) writeLogsToDB(logs []*models.RequestLog) error {
 			if err := tx.Model(&models.APIKey{}).Where("key_hash IN ?", keyHashes).
 				Updates(map[string]any{
 					"request_count": gorm.Expr(caseStmt.String()),
-					"last_used_at":  time.Now(),
 				}).Error; err != nil {
 				return fmt.Errorf("failed to batch update api_key stats: %w", err)
 			}
@@ -255,6 +254,21 @@ func (s *RequestLogService) writeLogsToDB(logs []*models.RequestLog) error {
 				counts.Failure++
 			}
 			hourlyStats[key] = counts
+
+			if log.ParentGroupID > 0 {
+				parentKey := struct {
+					Time    time.Time
+					GroupID uint
+				}{Time: hourlyTime, GroupID: log.ParentGroupID}
+
+				parentCounts := hourlyStats[parentKey]
+				if log.IsSuccess {
+					parentCounts.Success++
+				} else {
+					parentCounts.Failure++
+				}
+				hourlyStats[parentKey] = parentCounts
+			}
 		}
 
 		if len(hourlyStats) > 0 {

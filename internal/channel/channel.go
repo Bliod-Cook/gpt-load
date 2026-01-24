@@ -12,7 +12,7 @@ import (
 // ChannelProxy defines the interface for different API channel proxies.
 type ChannelProxy interface {
 	// BuildUpstreamURL constructs the target URL for the upstream service.
-	BuildUpstreamURL(originalURL *url.URL, group *models.Group) (string, error)
+	BuildUpstreamURL(originalURL *url.URL, groupName string) (string, error)
 
 	// IsConfigStale checks if the channel's configuration is stale compared to the provided group.
 	IsConfigStale(group *models.Group) bool
@@ -34,4 +34,10 @@ type ChannelProxy interface {
 
 	// ValidateKey checks if the given API key is valid.
 	ValidateKey(ctx context.Context, apiKey *models.APIKey, group *models.Group) (bool, error)
+
+	// ApplyModelRedirect applies model redirection based on the group's redirect rules.
+	ApplyModelRedirect(req *http.Request, bodyBytes []byte, group *models.Group) ([]byte, error)
+
+	// TransformModelList transforms the model list response based on redirect rules.
+	TransformModelList(req *http.Request, bodyBytes []byte, group *models.Group) (map[string]any, error)
 }
