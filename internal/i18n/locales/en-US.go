@@ -60,6 +60,10 @@ var MessagesEnUS = map[string]string{
 	"validation.group_id_required":       "group_id query parameter is required",
 	"validation.invalid_group_id_format": "Invalid group_id format",
 	"validation.keys_text_empty":         "Keys text cannot be empty",
+	"validation.file_required":           "File is required",
+	"validation.only_txt_supported":      "Only .txt files are supported",
+	"validation.failed_to_open_file":     "Failed to open file",
+	"validation.failed_to_read_file":     "Failed to read file content",
 	"validation.invalid_group_type":      "Invalid group type, must be 'standard' or 'aggregate'",
 	"validation.sub_groups_required":     "Aggregate group must contain at least one sub-group",
 	"validation.invalid_sub_group_id":    "Invalid sub-group ID",
@@ -71,6 +75,7 @@ var MessagesEnUS = map[string]string{
 	"validation.sub_group_weight_max_exceeded": "Sub-group weight cannot exceed 1000",
 	"validation.sub_group_referenced_cannot_modify": "This group is referenced by {{.count}} aggregate group(s) as a sub-group. Cannot modify channel type or validation endpoint. Please remove this group from related aggregate groups before making changes",
 	"validation.standard_group_requires_upstreams_testmodel": "Converting to standard group requires providing upstreams and test model",
+	"validation.aggregate_no_model_redirect": "Aggregate groups do not support model redirect rules",
 
 	// Task related
 	"task.validation_started": "Key validation task started",

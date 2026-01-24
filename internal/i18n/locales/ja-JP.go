@@ -60,6 +60,10 @@ var MessagesJaJP = map[string]string{
 	"validation.group_id_required":       "group_idクエリパラメータが必要です",
 	"validation.invalid_group_id_format": "無効なgroup_id形式",
 	"validation.keys_text_empty":         "キーテキストは空にできません",
+	"validation.file_required":           "ファイルが必要です",
+	"validation.only_txt_supported":      ".txtファイルのみサポートされています",
+	"validation.failed_to_open_file":     "ファイルを開けませんでした",
+	"validation.failed_to_read_file":     "ファイルの内容を読み取れませんでした",
 	"validation.invalid_group_type":      "無効なグループタイプ、'standard'または'aggregate'である必要があります",
 	"validation.sub_groups_required":     "集約グループには少なくとも1つのサブグループが必要です",
 	"validation.invalid_sub_group_id":    "無効なサブグループID",
@@ -71,6 +75,7 @@ var MessagesJaJP = map[string]string{
 	"validation.sub_group_weight_max_exceeded": "サブグループの重みは1000を超えることはできません",
 	"validation.sub_group_referenced_cannot_modify": "このグループは {{.count}} 個の集約グループでサブグループとして参照されています。チャンネルタイプまたは検証エンドポイントは変更できません。変更前に関連する集約グループからこのグループを削除してください",
 	"validation.standard_group_requires_upstreams_testmodel": "標準グループへの変換にはアップストリームサーバーとテストモデルの提供が必要です",
+	"validation.aggregate_no_model_redirect": "集約グループはモデルリダイレクトルールをサポートしていません",
 
 	// Task related
 	"task.validation_started": "キー検証タスクが開始されました",
