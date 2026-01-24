@@ -6,6 +6,7 @@ import (
 	"gpt-load/internal/config"
 	"gpt-load/internal/httpclient"
 	"gpt-load/internal/models"
+	"gpt-load/internal/utils"
 	"net/url"
 	"sync"
 	"time"
@@ -140,14 +141,16 @@ func (f *Factory) newBaseChannel(name string, group *models.Group) (*BaseChannel
 	streamClient := f.clientManager.GetClient(&streamConfig)
 
 	return &BaseChannel{
-		Name:               name,
-		Upstreams:          upstreamInfos,
-		HTTPClient:         httpClient,
-		StreamClient:       streamClient,
-		TestModel:          group.TestModel,
-		ValidationEndpoint: group.ValidationEndpoint,
-		channelType:        group.ChannelType,
-		groupUpstreams:     group.Upstreams,
-		effectiveConfig:    &group.EffectiveConfig,
+		Name:                name,
+		Upstreams:           upstreamInfos,
+		HTTPClient:          httpClient,
+		StreamClient:        streamClient,
+		TestModel:           group.TestModel,
+		ValidationEndpoint:  utils.GetValidationEndpoint(group),
+		channelType:         group.ChannelType,
+		groupUpstreams:      group.Upstreams,
+		effectiveConfig:     &group.EffectiveConfig,
+		modelRedirectRules:  group.ModelRedirectRules,
+		modelRedirectStrict: group.ModelRedirectStrict,
 	}, nil
 }

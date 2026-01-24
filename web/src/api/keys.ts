@@ -5,6 +5,7 @@ import type {
   GroupConfigOption,
   GroupStatsResponse,
   KeyStatus,
+  ParentAggregateGroup,
   TaskInfo,
 } from "@/types/models";
 import http from "@/utils/http";
@@ -54,12 +55,14 @@ export const keysApi = {
   ): Promise<{
     group: Group;
   }> {
-    const res = await http.post(`/groups/${groupId}/copy`, copyData);
+    const res = await http.post(`/groups/${groupId}/copy`, copyData, {
+      hideMessage: true,
+    });
     return res.data;
   },
 
-  // 获取分组列表（简化版）
-  async listGroups(): Promise<Group[]> {
+  // 获取分组列表
+  async listGroups(): Promise<Pick<Group, "id" | "name" | "display_name">[]> {
     const res = await http.get("/groups/list");
     return res.data || [];
   },
@@ -107,12 +110,31 @@ export const keysApi = {
   },
 
   // 异步批量添加密钥
-  async addKeysAsync(group_id: number, keys_text: string): Promise<TaskInfo> {
-    const res = await http.post("/keys/add-async", {
-      group_id,
-      keys_text,
-    });
+  async addKeysAsync(group_id: number, keys_text?: string, file?: File): Promise<TaskInfo> {
+    let requestData: FormData | { group_id: number; keys_text: string };
+    const config: { hideMessage: boolean; headers?: { "Content-Type": string } } = {
+      hideMessage: true,
+    };
+
+    if (file) {
+      // File upload mode
+      const formData = new FormData();
+      formData.append("group_id", group_id.toString());
+      formData.append("file", file);
+      requestData = formData;
+      config.headers = { "Content-Type": "multipart/form-data" };
+    } else {
+      // Text input mode
+      requestData = { group_id, keys_text: keys_text || "" };
+    }
+
+    const res = await http.post("/keys/add-async", requestData, config);
     return res.data;
+  },
+
+  // 更新密钥备注
+  async updateKeyNotes(keyId: number, notes: string): Promise<void> {
+    await http.put(`/keys/${keyId}/notes`, { notes }, { hideMessage: true });
   },
 
   // 测试密钥
@@ -154,14 +176,20 @@ export const keysApi = {
 
   // 异步批量删除密钥
   async deleteKeysAsync(group_id: number, keys_text: string): Promise<TaskInfo> {
-    const res = await http.post("/keys/delete-async", {
-      group_id,
-      keys_text,
-    });
+    const res = await http.post(
+      "/keys/delete-async",
+      {
+        group_id,
+        keys_text,
+      },
+      {
+        hideMessage: true,
+      }
+    );
     return res.data;
   },
 
-  // 测试密钥
+  // 恢复密钥
   restoreKeys(group_id: number, keys_text: string): Promise<null> {
     return http.post("/keys/restore-multiple", {
       group_id,
@@ -197,7 +225,7 @@ export const keysApi = {
   },
 
   // 导出密钥
-  exportKeys(groupId: number, status: "all" | "active" | "invalid" = "all") {
+  exportKeys(groupId: number, status: "all" | "active" | "invalid" = "all"): void {
     const authKey = localStorage.getItem("authKey");
     if (!authKey) {
       window.$message.error(i18n.global.t("auth.noAuthKeyFound"));
@@ -246,5 +274,43 @@ export const keysApi = {
   async getTaskStatus(): Promise<TaskInfo> {
     const res = await http.get("/tasks/status");
     return res.data;
+  },
+
+  // 获取聚合分组的子分组列表
+  async getSubGroups(aggregateGroupId: number): Promise<import("@/types/models").SubGroupInfo[]> {
+    const res = await http.get(`/groups/${aggregateGroupId}/sub-groups`);
+    return res.data || [];
+  },
+
+  // 为聚合分组添加子分组
+  async addSubGroups(
+    aggregateGroupId: number,
+    subGroups: { group_id: number; weight: number }[]
+  ): Promise<void> {
+    await http.post(`/groups/${aggregateGroupId}/sub-groups`, {
+      sub_groups: subGroups,
+    });
+  },
+
+  // 更新子分组权重
+  async updateSubGroupWeight(
+    aggregateGroupId: number,
+    subGroupId: number,
+    weight: number
+  ): Promise<void> {
+    await http.put(`/groups/${aggregateGroupId}/sub-groups/${subGroupId}/weight`, {
+      weight,
+    });
+  },
+
+  // 删除子分组
+  async deleteSubGroup(aggregateGroupId: number, subGroupId: number): Promise<void> {
+    await http.delete(`/groups/${aggregateGroupId}/sub-groups/${subGroupId}`);
+  },
+
+  // 获取引用该分组的聚合分组列表
+  async getParentAggregateGroups(groupId: number): Promise<ParentAggregateGroup[]> {
+    const res = await http.get(`/groups/${groupId}/parent-aggregate-groups`);
+    return res.data || [];
   },
 };

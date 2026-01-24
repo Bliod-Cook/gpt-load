@@ -5,10 +5,13 @@ import (
 	app_errors "gpt-load/internal/errors"
 	"gpt-load/internal/models"
 	"gpt-load/internal/response"
+	"io"
 	"log"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -106,24 +109,79 @@ func (s *Server) AddMultipleKeys(c *gin.Context) {
 	response.Success(c, result)
 }
 
-// AddMultipleKeysAsync handles creating new keys from a text block within a specific group.
+// AddMultipleKeysAsync handles creating new keys from a text block or file within a specific group.
 func (s *Server) AddMultipleKeysAsync(c *gin.Context) {
-	var req KeyTextRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, app_errors.NewAPIError(app_errors.ErrInvalidJSON, err.Error()))
-		return
+	var groupID uint
+	var keysText string
+
+	// Check content type to determine if it's a file upload or JSON request
+	contentType := c.ContentType()
+
+	if strings.Contains(contentType, "multipart/form-data") {
+		// Handle file upload
+		groupIDStr := c.PostForm("group_id")
+		if groupIDStr == "" {
+			response.ErrorI18nFromAPIError(c, app_errors.ErrBadRequest, "validation.group_id_required")
+			return
+		}
+
+		groupIDInt, err := strconv.Atoi(groupIDStr)
+		if err != nil || groupIDInt <= 0 {
+			response.ErrorI18nFromAPIError(c, app_errors.ErrBadRequest, "validation.invalid_group_id_format")
+			return
+		}
+		groupID = uint(groupIDInt)
+
+		// Get uploaded file
+		file, err := c.FormFile("file")
+		if err != nil {
+			response.ErrorI18nFromAPIError(c, app_errors.ErrBadRequest, "validation.file_required")
+			return
+		}
+
+		// Validate file extension
+		ext := strings.ToLower(filepath.Ext(file.Filename))
+		if ext != ".txt" {
+			response.ErrorI18nFromAPIError(c, app_errors.ErrValidation, "validation.only_txt_supported")
+			return
+		}
+
+		// Read file content
+		fileContent, err := file.Open()
+		if err != nil {
+			response.ErrorI18nFromAPIError(c, app_errors.ErrBadRequest, "validation.failed_to_open_file")
+			return
+		}
+		defer fileContent.Close()
+
+		// Read file content as string using io.ReadAll
+		buf, err := io.ReadAll(fileContent)
+		if err != nil {
+			response.ErrorI18nFromAPIError(c, app_errors.ErrBadRequest, "validation.failed_to_read_file")
+			return
+		}
+		keysText = string(buf)
+	} else {
+		// Handle JSON request (original behavior)
+		var req KeyTextRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.Error(c, app_errors.NewAPIError(app_errors.ErrInvalidJSON, err.Error()))
+			return
+		}
+		groupID = req.GroupID
+		keysText = req.KeysText
 	}
 
-	group, ok := s.findGroupByID(c, req.GroupID)
+	group, ok := s.findGroupByID(c, groupID)
 	if !ok {
 		return
 	}
 
-	if !validateKeysText(c, req.KeysText) {
+	if !validateKeysText(c, keysText) {
 		return
 	}
 
-	taskStatus, err := s.KeyImportService.StartImportTask(group, req.KeysText)
+	taskStatus, err := s.KeyImportService.StartImportTask(group, keysText)
 	if err != nil {
 		response.Error(c, app_errors.NewAPIError(app_errors.ErrTaskInProgress, err.Error()))
 		return
@@ -477,4 +535,51 @@ func (s *Server) GetRandomKey(c *gin.Context) {
 		"failure_count": apiKey.FailureCount,
 		"created_at":    apiKey.CreatedAt,
 	})
+}
+
+// UpdateKeyNotesRequest defines the payload for updating a key's notes.
+type UpdateKeyNotesRequest struct {
+	Notes string `json:"notes"`
+}
+
+// UpdateKeyNotes handles updating the notes of a specific API key.
+func (s *Server) UpdateKeyNotes(c *gin.Context) {
+	keyIDStr := c.Param("id")
+	keyID, err := strconv.Atoi(keyIDStr)
+	if err != nil || keyID <= 0 {
+		response.Error(c, app_errors.NewAPIError(app_errors.ErrBadRequest, "invalid key ID format"))
+		return
+	}
+
+	var req UpdateKeyNotesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, app_errors.NewAPIError(app_errors.ErrInvalidJSON, err.Error()))
+		return
+	}
+
+	// Normalize and enforce length explicitly
+	req.Notes = strings.TrimSpace(req.Notes)
+	if utf8.RuneCountInString(req.Notes) > 255 {
+		response.Error(c, app_errors.NewAPIError(app_errors.ErrValidation, "notes length must be <= 255 characters"))
+		return
+	}
+
+	// Check if the key exists and update its notes
+	var key models.APIKey
+	if err := s.DB.First(&key, keyID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			response.Error(c, app_errors.ErrResourceNotFound)
+		} else {
+			response.Error(c, app_errors.ParseDBError(err))
+		}
+		return
+	}
+
+	// Update notes
+	if err := s.DB.Model(&key).Update("notes", req.Notes).Error; err != nil {
+		response.Error(c, app_errors.ParseDBError(err))
+		return
+	}
+
+	response.Success(c, nil)
 }
