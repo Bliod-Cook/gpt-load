@@ -63,6 +63,7 @@ type GroupCreateRequest struct {
 	Config              map[string]any      `json:"config"`
 	HeaderRules         []models.HeaderRule `json:"header_rules"`
 	ProxyKeys           string              `json:"proxy_keys"`
+	AllowAnonymous      bool                `json:"allow_anonymous"`
 }
 
 // CreateGroup handles the creation of a new group.
@@ -89,6 +90,7 @@ func (s *Server) CreateGroup(c *gin.Context) {
 		Config:              req.Config,
 		HeaderRules:         req.HeaderRules,
 		ProxyKeys:           req.ProxyKeys,
+		AllowAnonymous:      req.AllowAnonymous,
 	}
 
 	group, err := s.GroupService.CreateGroup(c.Request.Context(), params)
@@ -132,6 +134,7 @@ type GroupUpdateRequest struct {
 	Config              map[string]any      `json:"config"`
 	HeaderRules         []models.HeaderRule `json:"header_rules"`
 	ProxyKeys           *string             `json:"proxy_keys,omitempty"`
+	AllowAnonymous      *bool               `json:"allow_anonymous,omitempty"`
 }
 
 type GroupReorderItemRequest struct {
@@ -192,6 +195,7 @@ func (s *Server) UpdateGroup(c *gin.Context) {
 		ModelRedirectStrict: req.ModelRedirectStrict,
 		Config:              req.Config,
 		ProxyKeys:           req.ProxyKeys,
+		AllowAnonymous:      req.AllowAnonymous,
 	}
 
 	if req.Upstreams != nil {
@@ -263,6 +267,7 @@ type GroupResponse struct {
 	Config              datatypes.JSONMap   `json:"config"`
 	HeaderRules         []models.HeaderRule `json:"header_rules"`
 	ProxyKeys           string              `json:"proxy_keys"`
+	AllowAnonymous      bool                `json:"allow_anonymous"`
 	LastValidatedAt     *time.Time          `json:"last_validated_at"`
 	CreatedAt           time.Time           `json:"created_at"`
 	UpdatedAt           time.Time           `json:"updated_at"`
@@ -307,6 +312,7 @@ func (s *Server) newGroupResponse(group *models.Group) *GroupResponse {
 		Config:              group.Config,
 		HeaderRules:         headerRules,
 		ProxyKeys:           group.ProxyKeys,
+		AllowAnonymous:      group.AllowAnonymous,
 		LastValidatedAt:     group.LastValidatedAt,
 		CreatedAt:           group.CreatedAt,
 		UpdatedAt:           group.UpdatedAt,

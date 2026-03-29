@@ -78,6 +78,7 @@ interface GroupFormData {
   configItems: ConfigItem[];
   header_rules: HeaderRuleItem[];
   proxy_keys: string;
+  allow_anonymous: boolean;
   group_type?: string;
 }
 
@@ -103,6 +104,7 @@ const formData = reactive<GroupFormData>({
   configItems: [] as ConfigItem[],
   header_rules: [] as HeaderRuleItem[],
   proxy_keys: "",
+  allow_anonymous: false,
   group_type: "standard",
 });
 
@@ -304,6 +306,7 @@ function resetForm() {
     configItems: [],
     header_rules: [],
     proxy_keys: "",
+    allow_anonymous: false,
     group_type: "standard",
   });
 
@@ -350,6 +353,7 @@ function loadGroupData() {
       action: (rule.action as "set" | "remove") || "set",
     })),
     proxy_keys: props.group.proxy_keys || "",
+    allow_anonymous: props.group.allow_anonymous ?? false,
     group_type: props.group.group_type || "standard",
   });
 }
@@ -539,6 +543,7 @@ async function handleSubmit() {
           action: rule.action,
         })),
       proxy_keys: formData.proxy_keys,
+      allow_anonymous: formData.allow_anonymous,
     };
 
     let res: Group;
@@ -746,6 +751,22 @@ async function handleSubmit() {
               :placeholder="t('keys.multiKeysPlaceholder')"
               size="medium"
             />
+          </n-form-item>
+
+          <!-- Allow anonymous access -->
+          <n-form-item :label="t('keys.allowAnonymous')" path="allow_anonymous">
+            <template #label>
+              <div class="form-label-with-tooltip">
+                {{ t("keys.allowAnonymous") }}
+                <n-tooltip trigger="hover" placement="top">
+                  <template #trigger>
+                    <n-icon :component="HelpCircleOutline" class="help-icon" />
+                  </template>
+                  {{ t("keys.allowAnonymousTooltip") }}
+                </n-tooltip>
+              </div>
+            </template>
+            <n-switch v-model:value="formData.allow_anonymous" />
           </n-form-item>
 
           <!-- Description takes full row -->

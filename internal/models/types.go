@@ -97,6 +97,7 @@ type Group struct {
 	HeaderRules         datatypes.JSON       `gorm:"type:json" json:"header_rules"`
 	ModelRedirectRules  datatypes.JSONMap    `gorm:"type:json" json:"model_redirect_rules"`
 	ModelRedirectStrict bool                 `gorm:"default:false" json:"model_redirect_strict"`
+	AllowAnonymous      bool                 `gorm:"default:false" json:"allow_anonymous"`
 	APIKeys             []APIKey             `gorm:"foreignKey:GroupID" json:"api_keys"`
 	SubGroups           []GroupSubGroup      `gorm:"-" json:"sub_groups,omitempty"`
 	LastValidatedAt     *time.Time           `json:"last_validated_at"`
@@ -111,17 +112,19 @@ type Group struct {
 
 // APIKey 对应 api_keys 表
 type APIKey struct {
-	ID           uint       `gorm:"primaryKey;autoIncrement;index:idx_api_keys_group_last_used_id,priority:3" json:"id"`
-	KeyValue     string     `gorm:"type:text;not null" json:"key_value"`
-	KeyHash      string     `gorm:"type:varchar(128);index" json:"key_hash"`
-	GroupID      uint       `gorm:"not null;index;index:idx_api_keys_group_last_used_id,priority:1" json:"group_id"`
-	Status       string     `gorm:"type:varchar(50);not null;default:'active';index" json:"status"`
-	Notes        string     `gorm:"type:varchar(255);default:''" json:"notes"`
-	RequestCount int64      `gorm:"not null;default:0" json:"request_count"`
-	FailureCount int64      `gorm:"not null;default:0" json:"failure_count"`
-	LastUsedAt   *time.Time `gorm:"index:idx_api_keys_group_last_used_id,priority:2" json:"last_used_at"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	ID               uint       `gorm:"primaryKey;autoIncrement" json:"id"`
+	KeyValue         string     `gorm:"type:text;not null" json:"key_value"`
+	KeyHash          string     `gorm:"type:varchar(128);index" json:"key_hash"`
+	GroupID          uint       `gorm:"not null;index" json:"group_id"`
+	Status           string     `gorm:"type:varchar(50);not null;default:'active';index" json:"status"`
+	Notes            string     `gorm:"type:varchar(255);default:''" json:"notes"`
+	RequestCount     int64      `gorm:"not null;default:0" json:"request_count"`
+	FailureCount     int64      `gorm:"not null;default:0" json:"failure_count"`
+	LastFailureError string     `gorm:"type:text" json:"last_failure_error"`
+	LastFailureAt    *time.Time `json:"last_failure_at"`
+	LastUsedAt       *time.Time `json:"last_used_at"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
 // RequestType 请求类型常量

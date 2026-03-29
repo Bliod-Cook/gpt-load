@@ -10,6 +10,46 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var upstreamPrivacyHeaderKeys = []string{
+	"Forwarded",
+	"X-Forwarded-For",
+	"X-Forwarded",
+	"X-Forwarded-Host",
+	"X-Forwarded-Port",
+	"X-Forwarded-Proto",
+	"X-Forwarded-Protocol",
+	"X-Forwarded-Scheme",
+	"X-Forwarded-Server",
+	"X-Forwarded-Uri",
+	"X-Forwarded-Method",
+	"X-Original-Forwarded-For",
+	"X-Original-Host",
+	"X-Original-Method",
+	"X-Original-Proto",
+	"X-Original-Scheme",
+	"X-Original-Uri",
+	"X-Original-Url",
+	"X-Real-IP",
+	"X-Client-IP",
+	"X-Cluster-Client-IP",
+	"X-Originating-IP",
+	"X-Remote-IP",
+	"X-Remote-Addr",
+	"True-Client-IP",
+	"CF-Connecting-IP",
+
+	// Nginx control header; should not be forwarded to upstreams.
+	"X-Accel-Buffering",
+}
+
+var upstreamPrivacyHeaderKeySet = func() map[string]struct{} {
+	set := make(map[string]struct{}, len(upstreamPrivacyHeaderKeys))
+	for _, key := range upstreamPrivacyHeaderKeys {
+		set[strings.ToLower(key)] = struct{}{}
+	}
+	return set
+}()
+
 // HeaderVariableContext holds context data for variable resolution
 type HeaderVariableContext struct {
 	ClientIP string
@@ -87,5 +127,25 @@ func NewHeaderVariableContext(group *models.Group, apiKey *models.APIKey) *Heade
 		ClientIP: "127.0.0.1",
 		Group:    group,
 		APIKey:   apiKey,
+	}
+}
+
+// RemoveClientIPHeaders deletes headers that may leak the original client IP to upstream.
+//
+// Deprecated: use RemoveUpstreamPrivacyHeaders.
+func RemoveClientIPHeaders(headers http.Header) {
+	RemoveUpstreamPrivacyHeaders(headers)
+}
+
+// RemoveUpstreamPrivacyHeaders deletes headers that may leak client IP or internal routing info to upstream.
+func RemoveUpstreamPrivacyHeaders(headers http.Header) {
+	if headers == nil {
+		return
+	}
+
+	for key := range headers {
+		if _, ok := upstreamPrivacyHeaderKeySet[strings.ToLower(key)]; ok {
+			delete(headers, key)
+		}
 	}
 }

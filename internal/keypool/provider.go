@@ -84,6 +84,17 @@ func (p *KeyProvider) SelectKey(groupID uint) (*models.APIKey, error) {
 		CreatedAt:    time.Unix(createdAt, 0),
 	}
 
+	// Add failure info if present
+	if lastFailureError := keyDetails["last_failure_error"]; lastFailureError != "" {
+		apiKey.LastFailureError = lastFailureError
+	}
+	if lastFailureAtStr := keyDetails["last_failure_at"]; lastFailureAtStr != "" {
+		if lastFailureAt, err := strconv.ParseInt(lastFailureAtStr, 10, 64); err == nil {
+			t := time.Unix(lastFailureAt, 0)
+			apiKey.LastFailureAt = &t
+		}
+	}
+
 	return apiKey, nil
 }
 
@@ -104,7 +115,7 @@ func (p *KeyProvider) UpdateStatus(apiKey *models.APIKey, group *models.Group, i
 					"error": errorMessage,
 				}).Debug("Uncounted error, skipping failure handling")
 			} else {
-				if err := p.handleFailure(apiKey, group, keyHashKey, activeKeysListKey); err != nil {
+				if err := p.handleFailure(apiKey, group, keyHashKey, activeKeysListKey, errorMessage); err != nil {
 					logrus.WithFields(logrus.Fields{"keyID": apiKey.ID, "error": err}).Error("Failed to handle key failure")
 				}
 			}
@@ -185,7 +196,7 @@ func (p *KeyProvider) handleSuccess(keyID uint, keyHashKey, activeKeysListKey st
 	})
 }
 
-func (p *KeyProvider) handleFailure(apiKey *models.APIKey, group *models.Group, keyHashKey, activeKeysListKey string) error {
+func (p *KeyProvider) handleFailure(apiKey *models.APIKey, group *models.Group, keyHashKey, activeKeysListKey string, errorMessage string) error {
 	keyDetails, err := p.store.HGetAll(keyHashKey)
 	if err != nil {
 		return fmt.Errorf("failed to get key details from store: %w", err)
@@ -207,8 +218,13 @@ func (p *KeyProvider) handleFailure(apiKey *models.APIKey, group *models.Group, 
 		}
 
 		newFailureCount := failureCount + 1
+		now := time.Now()
 
-		updates := map[string]any{"failure_count": newFailureCount}
+		updates := map[string]any{
+			"failure_count":      newFailureCount,
+			"last_failure_error": errorMessage,
+			"last_failure_at":    now,
+		}
 		shouldBlacklist := blacklistThreshold > 0 && newFailureCount >= int64(blacklistThreshold)
 		if shouldBlacklist {
 			updates["status"] = models.KeyStatusInvalid
@@ -220,6 +236,14 @@ func (p *KeyProvider) handleFailure(apiKey *models.APIKey, group *models.Group, 
 
 		if _, err := p.store.HIncrBy(keyHashKey, "failure_count", 1); err != nil {
 			return fmt.Errorf("failed to increment failure count in store: %w", err)
+		}
+
+		// Update failure error and timestamp in store
+		if err := p.store.HSet(keyHashKey, map[string]any{
+			"last_failure_error": errorMessage,
+			"last_failure_at":    now.Unix(),
+		}); err != nil {
+			return fmt.Errorf("failed to update failure info in store: %w", err)
 		}
 
 		if shouldBlacklist {
@@ -630,7 +654,7 @@ func (p *KeyProvider) removeKeyFromStore(keyID, groupID uint) error {
 
 // apiKeyToMap converts an APIKey model to a map for HSET.
 func (p *KeyProvider) apiKeyToMap(key *models.APIKey) map[string]any {
-	return map[string]any{
+	m := map[string]any{
 		"id":            fmt.Sprint(key.ID),
 		"key_string":    key.KeyValue,
 		"status":        key.Status,
@@ -638,6 +662,16 @@ func (p *KeyProvider) apiKeyToMap(key *models.APIKey) map[string]any {
 		"group_id":      key.GroupID,
 		"created_at":    key.CreatedAt.Unix(),
 	}
+
+	// Add failure info if present
+	if key.LastFailureError != "" {
+		m["last_failure_error"] = key.LastFailureError
+	}
+	if key.LastFailureAt != nil {
+		m["last_failure_at"] = key.LastFailureAt.Unix()
+	}
+
+	return m
 }
 
 // pluckIDs extracts IDs from a slice of APIKey.

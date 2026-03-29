@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"gpt-load/internal/channel"
@@ -22,6 +24,7 @@ import (
 	"gpt-load/internal/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 )
 
@@ -91,6 +94,12 @@ func (ps *ProxyServer) HandleProxy(c *gin.Context) {
 	channelHandler, err := ps.channelFactory.GetChannel(group)
 	if err != nil {
 		response.Error(c, app_errors.NewAPIError(app_errors.ErrInternalServer, fmt.Sprintf("Failed to get channel for group '%s': %v", groupName, err)))
+		return
+	}
+
+	// WebSocket proxy for WS channel type
+	if group.ChannelType == "ws" && isWebSocketRequest(c.Request) {
+		ps.handleWebSocketProxy(c, channelHandler, originalGroup, group, startTime)
 		return
 	}
 
@@ -164,6 +173,7 @@ func (ps *ProxyServer) executeRequestWithRetry(
 	req.Header.Del("Authorization")
 	req.Header.Del("X-Api-Key")
 	req.Header.Del("X-Goog-Api-Key")
+	utils.RemoveUpstreamPrivacyHeaders(req.Header)
 
 	// Apply model redirection
 	finalBodyBytes, err := channelHandler.ApplyModelRedirect(req, bodyBytes, group)
@@ -186,11 +196,11 @@ func (ps *ProxyServer) executeRequestWithRetry(
 		headerCtx := utils.NewHeaderVariableContextFromGin(c, group, apiKey)
 		utils.ApplyHeaderRules(req, group.HeaderRuleList, headerCtx)
 	}
+	utils.RemoveUpstreamPrivacyHeaders(req.Header)
 
 	var client *http.Client
 	if isStream {
 		client = channelHandler.GetStreamClient()
-		req.Header.Set("X-Accel-Buffering", "no")
 	} else {
 		client = channelHandler.GetHTTPClient()
 	}
@@ -356,4 +366,157 @@ func (ps *ProxyServer) logRequest(
 	if err := ps.requestLogService.Record(logEntry); err != nil {
 		logrus.Errorf("Failed to record request log: %v", err)
 	}
+}
+
+func (ps *ProxyServer) handleWebSocketProxy(c *gin.Context, channelHandler channel.ChannelProxy, originalGroup *models.Group, group *models.Group, startTime time.Time) {
+	cfg := group.EffectiveConfig
+
+	apiKey, err := ps.keyProvider.SelectKey(group.ID)
+	if err != nil {
+		logrus.Errorf("Failed to select a key for group %s: %v", group.Name, err)
+		response.Error(c, app_errors.NewAPIError(app_errors.ErrNoKeysAvailable, err.Error()))
+		ps.logRequest(c, originalGroup, group, nil, startTime, http.StatusServiceUnavailable, err, true, "", channelHandler, nil, models.RequestTypeFinal)
+		return
+	}
+
+	upstreamHTTPURL, err := channelHandler.BuildUpstreamURL(c.Request.URL, originalGroup.Name)
+	if err != nil {
+		response.Error(c, app_errors.NewAPIError(app_errors.ErrInternalServer, fmt.Sprintf("Failed to build upstream URL: %v", err)))
+		return
+	}
+
+	wsURL, err := toWebSocketURL(upstreamHTTPURL)
+	if err != nil {
+		response.Error(c, app_errors.NewAPIError(app_errors.ErrInternalServer, fmt.Sprintf("Failed to convert upstream URL to WebSocket URL: %v", err)))
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), time.Duration(cfg.RequestTimeout)*time.Second)
+	defer cancel()
+
+	headers := c.Request.Header.Clone()
+	headers.Del("Authorization")
+	headers.Del("X-Api-Key")
+	headers.Del("X-Goog-Api-Key")
+	// Let gorilla/websocket manage WS control headers itself
+	headers.Del("Connection")
+	headers.Del("Upgrade")
+	headers.Del("Sec-Websocket-Key")
+	headers.Del("Sec-Websocket-Version")
+	headers.Del("Sec-Websocket-Extensions")
+	headers.Del("Sec-Websocket-Protocol")
+	utils.RemoveUpstreamPrivacyHeaders(headers)
+
+	// Reuse channel-specific header modification logic
+	dummyReq, _ := http.NewRequestWithContext(ctx, http.MethodGet, wsURL, nil)
+	dummyReq.Header = headers
+	channelHandler.ModifyRequest(dummyReq, apiKey, group)
+
+	if len(group.HeaderRuleList) > 0 {
+		headerCtx := utils.NewHeaderVariableContextFromGin(c, group, apiKey)
+		utils.ApplyHeaderRules(dummyReq, group.HeaderRuleList, headerCtx)
+	}
+	utils.RemoveUpstreamPrivacyHeaders(dummyReq.Header)
+
+	dialer := websocket.Dialer{
+		HandshakeTimeout: time.Duration(cfg.RequestTimeout) * time.Second,
+		Proxy:            http.ProxyFromEnvironment,
+	}
+	if cfg.ProxyURL != "" {
+		if proxyURL, err := url.Parse(cfg.ProxyURL); err == nil {
+			dialer.Proxy = http.ProxyURL(proxyURL)
+		}
+	}
+
+	upstreamConn, resp, err := dialer.DialContext(ctx, wsURL, dummyReq.Header)
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		statusCode := http.StatusBadGateway
+		if resp != nil {
+			statusCode = resp.StatusCode
+		}
+		logrus.Errorf("WebSocket upstream dial failed for group %s: %v", group.Name, err)
+		ps.logRequest(c, originalGroup, group, apiKey, startTime, statusCode, err, true, wsURL, channelHandler, nil, models.RequestTypeFinal)
+		response.Error(c, app_errors.NewAPIErrorWithUpstream(statusCode, "UPSTREAM_WS_ERROR", err.Error()))
+		return
+	}
+	defer upstreamConn.Close()
+
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool { return true },
+	}
+
+	clientConn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		logrus.Errorf("WebSocket upgrade failed for group %s: %v", group.Name, err)
+		ps.logRequest(c, originalGroup, group, apiKey, startTime, http.StatusBadRequest, err, true, wsURL, channelHandler, nil, models.RequestTypeFinal)
+		return
+	}
+	defer clientConn.Close()
+
+	errCh := make(chan error, 2)
+
+	go func() {
+		for {
+			mt, msg, err := clientConn.ReadMessage()
+			if err != nil {
+				errCh <- err
+				return
+			}
+			if err := upstreamConn.WriteMessage(mt, msg); err != nil {
+				errCh <- err
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			mt, msg, err := upstreamConn.ReadMessage()
+			if err != nil {
+				errCh <- err
+				return
+			}
+			if err := clientConn.WriteMessage(mt, msg); err != nil {
+				errCh <- err
+				return
+			}
+		}
+	}()
+
+	proxyErr := <-errCh
+	if websocket.IsCloseError(proxyErr, websocket.CloseNormalClosure, websocket.CloseGoingAway) || errors.Is(proxyErr, io.EOF) {
+		proxyErr = nil
+	}
+
+	ps.logRequest(c, originalGroup, group, apiKey, startTime, http.StatusSwitchingProtocols, proxyErr, true, wsURL, channelHandler, nil, models.RequestTypeFinal)
+}
+
+func isWebSocketRequest(r *http.Request) bool {
+	if r == nil {
+		return false
+	}
+	if strings.ToLower(r.Header.Get("Upgrade")) != "websocket" {
+		return false
+	}
+	connection := strings.ToLower(r.Header.Get("Connection"))
+	return strings.Contains(connection, "upgrade")
+}
+
+func toWebSocketURL(rawURL string) (string, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", err
+	}
+
+	switch u.Scheme {
+	case "http":
+		u.Scheme = "ws"
+	case "https":
+		u.Scheme = "wss"
+	}
+
+	return u.String(), nil
 }

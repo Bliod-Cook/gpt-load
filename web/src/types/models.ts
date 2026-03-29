@@ -23,6 +23,8 @@ export interface APIKey {
   status: KeyStatus;
   request_count: number;
   failure_count: number;
+  last_failure_error?: string;
+  last_failure_at?: string;
   last_used_at?: string;
   created_at: string;
   updated_at: string;
@@ -80,6 +82,7 @@ export interface Group {
   model_redirect_strict: boolean;
   header_rules?: HeaderRule[];
   proxy_keys: string;
+  allow_anonymous?: boolean;
   group_type?: GroupType;
   sub_groups?: SubGroupInfo[]; // 子分组列表（仅聚合分组）
   sub_group_ids?: number[]; // 子分组ID列表

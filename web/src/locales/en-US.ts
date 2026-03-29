@@ -147,6 +147,9 @@ export default {
     groupDescription: "Group Description",
     groupEndpoint: "Group Endpoint",
     proxyKeys: "Proxy Keys",
+    allowAnonymous: "Allow Anonymous Access",
+    allowAnonymousTooltip:
+      "When enabled, this group's proxy endpoint can be accessed without providing a proxy key. Use with caution.",
     createKey: "Create Key",
     editKey: "Edit Key",
     deleteKey: "Delete Key",

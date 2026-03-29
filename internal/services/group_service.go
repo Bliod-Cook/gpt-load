@@ -101,6 +101,7 @@ type GroupCreateParams struct {
 	HeaderRules         []models.HeaderRule
 	ProxyKeys           string
 	SubGroups           []SubGroupInput
+	AllowAnonymous      bool
 }
 
 // GroupUpdateParams captures updatable fields for a group.
@@ -123,6 +124,7 @@ type GroupUpdateParams struct {
 	HeaderRules         *[]models.HeaderRule
 	ProxyKeys           *string
 	SubGroups           *[]SubGroupInput
+	AllowAnonymous      *bool
 }
 
 // GroupReorderItem captures a group ID and target sort value.
@@ -247,6 +249,7 @@ func (s *GroupService) CreateGroup(ctx context.Context, params GroupCreateParams
 		Config:              cleanedConfig,
 		HeaderRules:         headerRulesJSON,
 		ProxyKeys:           strings.TrimSpace(params.ProxyKeys),
+		AllowAnonymous:      params.AllowAnonymous,
 	}
 
 	tx := s.db.WithContext(ctx).Begin()
@@ -482,6 +485,10 @@ func (s *GroupService) UpdateGroup(ctx context.Context, id uint, params GroupUpd
 			headerRulesJSON = datatypes.JSON("[]")
 		}
 		group.HeaderRules = headerRulesJSON
+	}
+
+	if params.AllowAnonymous != nil {
+		group.AllowAnonymous = *params.AllowAnonymous
 	}
 
 	if err := tx.Save(&group).Error; err != nil {

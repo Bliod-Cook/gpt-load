@@ -498,6 +498,45 @@ func (s *Server) ExportKeys(c *gin.Context) {
 	}
 }
 
+// GetRandomKey returns a randomly selected key from the specified group
+// using the same rotation algorithm as the proxy.
+func (s *Server) GetRandomKey(c *gin.Context) {
+	groupID, ok := validateGroupIDFromQuery(c)
+	if !ok {
+		return
+	}
+
+	if _, ok := s.findGroupByID(c, groupID); !ok {
+		return
+	}
+
+	apiKey, err := s.KeyService.KeyProvider.SelectKey(groupID)
+	if err != nil {
+		if err == app_errors.ErrNoActiveKeys {
+			response.Error(c, app_errors.ErrNoActiveKeys)
+		} else {
+			response.Error(c, app_errors.ParseDBError(err))
+		}
+		return
+	}
+
+	decryptedValue, err := s.EncryptionSvc.Decrypt(apiKey.KeyValue)
+	if err != nil {
+		logrus.WithError(err).WithField("key_id", apiKey.ID).Error("Failed to decrypt key value for random key API")
+		response.Error(c, app_errors.ErrInternalServer)
+		return
+	}
+
+	response.Success(c, gin.H{
+		"id":            apiKey.ID,
+		"group_id":      apiKey.GroupID,
+		"key_value":     decryptedValue,
+		"status":        apiKey.Status,
+		"failure_count": apiKey.FailureCount,
+		"created_at":    apiKey.CreatedAt,
+	})
+}
+
 // UpdateKeyNotesRequest defines the payload for updating a key's notes.
 type UpdateKeyNotesRequest struct {
 	Notes string `json:"notes"`

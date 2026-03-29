@@ -16,6 +16,7 @@ For detailed documentation, please visit [Official Documentation](https://www.gp
 ## Features
 
 - **Transparent Proxy**: Complete preservation of native API formats, supporting OpenAI, Google Gemini, and Anthropic Claude among other formats
+- **Privacy by Default**: Strips client IP forwarding headers (e.g., `X-Forwarded-For`, `Forwarded`, `X-Real-IP`) from upstream requests
 - **Intelligent Key Management**: High-performance key pool with group-based management, automatic rotation, and failure recovery
 - **Load Balancing**: Weighted load balancing across multiple upstream endpoints to enhance service availability
 - **Smart Failure Handling**: Automatic key blacklist management and recovery mechanisms to ensure service continuity

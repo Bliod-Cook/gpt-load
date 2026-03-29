@@ -131,6 +131,7 @@ func registerProtectedAPIRoutes(api *gin.RouterGroup, serverHandler *handler.Ser
 	{
 		keys.GET("", serverHandler.ListKeysInGroup)
 		keys.GET("/export", serverHandler.ExportKeys)
+		keys.GET("/random", serverHandler.GetRandomKey)
 		keys.POST("/add-multiple", serverHandler.AddMultipleKeys)
 		keys.POST("/add-async", serverHandler.AddMultipleKeysAsync)
 		keys.POST("/delete-multiple", serverHandler.DeleteMultipleKeys)
