@@ -37,7 +37,10 @@ var upstreamPrivacyHeaderKeys = []string{
 	"X-Remote-Addr",
 	"True-Client-IP",
 	"CF-Connecting-IP",
-
+	"CF-Visitor",
+	"CF-Ray",
+	"CF-Country",
+	"CDN-Loop"
 	// Nginx control header; should not be forwarded to upstreams.
 	"X-Accel-Buffering",
 }
