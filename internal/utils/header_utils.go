@@ -40,7 +40,7 @@ var upstreamPrivacyHeaderKeys = []string{
 	"CF-Visitor",
 	"CF-Ray",
 	"CF-Country",
-	"CDN-Loop"
+	"CDN-Loop",
 	// Nginx control header; should not be forwarded to upstreams.
 	"X-Accel-Buffering",
 }
