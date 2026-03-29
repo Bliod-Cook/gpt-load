@@ -49,16 +49,21 @@ jobs:
       - name: Run Go Tests
         run: go test $(go list ./... | grep -v '^gpt-load/web/node_modules/')
 
-      - name: Build Backend
-        env:
-          CGO_ENABLED: 0
-        run: |
-          mkdir -p dist
-          go build -ldflags "-s -w -X gpt-load/internal/version.Version=${{ github.ref_name }}" -o dist/gpt-load-linux-amd64 .
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
+      - name: Build Docker Image
+        uses: docker/build-push-action@v6
         with:
-          name: gpt-load-linux-amd64-${{ github.sha }}
-          path: dist/gpt-load-linux-amd64
-          if-no-files-found: error
+          context: .
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: gpt-load:ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ github.sha }}
+
+      - name: Verify Docker Image
+        run: docker image inspect gpt-load:ci-${{ github.sha }}
