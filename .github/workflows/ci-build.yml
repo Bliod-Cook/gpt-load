@@ -25,6 +25,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Prepare image name
+        id: image
+        run: echo "ghcr_image=ghcr.io/$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -66,7 +70,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ${{ steps.image.outputs.ghcr_image }}
           flavor: |
             latest=false
           tags: |
@@ -90,7 +94,7 @@ jobs:
 
       - name: Verify Pushed Docker Image
         if: github.event_name != 'pull_request'
-        run: docker buildx imagetools inspect ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+        run: docker buildx imagetools inspect ${{ steps.image.outputs.ghcr_image }}:sha-${{ github.sha }}
 
       - name: Build Docker Image For PR Validation
         if: github.event_name == 'pull_request'
